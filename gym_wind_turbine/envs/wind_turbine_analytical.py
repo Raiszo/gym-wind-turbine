@@ -1,3 +1,4 @@
+from typing import TypedDict, List, Optional
 from dataclasses import dataclass
 import functools
 import gym
@@ -51,18 +52,33 @@ class Rotor:
         C_p = 0.22 * (116*m_inv - 0.4*self.beta - 5) * np.exp(-12.5*m_inv)
 
         return 0.5 * self.rho * np.pi * self.R**2 * C_p * v_wind**3
-        
 
-@dataclass
-class EnvProps:
-    pass
+
+class RecordedVariables(TypedDict):
+    """System variables """
+    t: List[float]
+
+    v_wind: List[float]
+    omega: List[float]
+    omega_dot: List[float]
+    T_aero: List[float]
+    T_gen: List[float]
+    action: List[float]
+    clipped_action: List[float]
+    rewards: List[np.ndarray]
+
+
+# class EnvProps(TypedDict):
+#     training: Optional[bool]
 
 
 class WindTurbineAnalytical(gym.Env):
     dt = 0.05
 
-    def __init__(self) -> None:
+    def __init__(self, record=False,
+                 omega_0: float=1.0, T_gen_0: float=1000.0) -> None:
         super().__init__()
+        self.record: bool = record
 
         self.rotor = Rotor(rho=1.25, R=38.5, beta=0)
         self.drive_train = DriveTrain(
@@ -72,11 +88,11 @@ class WindTurbineAnalytical(gym.Env):
             K_rotor= 45.52,
             K_gen= 0.4,
         )
-        self.v_wind = 11        # [m/s]
+        self.v_wind = 11.0      # [m/s]
 
         obs_space = np.array([
             [0, 30.0],
-            [0, np.finfo(np.float64).max],
+            [5e-5, np.finfo(np.float64).max],
             [np.finfo(np.float64).min, np.finfo(np.float64).max],
             [0, np.finfo(np.float64).max],
             [0, np.finfo(np.float64).max],
@@ -87,14 +103,30 @@ class WindTurbineAnalytical(gym.Env):
             dtype=np.float64,
         )
 
+        action_space = np.array([-5.0, 5.0]) * self.dt
         self.action_space = spaces.Box(
-            low=-15.0,
-            high=15.0,
+            low=action_space[0],
+            high=action_space[1],
             shape=(1,)
         )
 
-        self.omega = 1.0        # [rad/s]
+        self.omega = omega_0    # [rad/s]
         self.state: np.ndarray
+
+        self._recordings: RecordedVariables = {
+            't': [],
+            'v_wind': [],
+            'omega': [],
+            'omega_dot': [],
+            'T_aero': [],
+            'T_gen': [],
+            'action': [],
+            'clipped_action': [],
+            'rewards': [],
+        }
+
+        self.T_gen_0 = T_gen_0
+        self.omega_0 = omega_0
 
     def reset(self):
         """
@@ -105,24 +137,40 @@ class WindTurbineAnalytical(gym.Env):
         - aerodynamic torque ~ 250 kN.m
         - generator torque ~ 250 kN.m
         """
-        self.omega = 1.0
+        self.omega = self.omega_0
+        self.t = 0.0
 
         P_aero = self.rotor.get_aerodynamic_power(self.v_wind, self.omega)
+        # print('p_aero:', P_aero)
         T_aero = P_aero / self.omega
-        # print(P_aero, T_aero)
+        T_gen = self.T_gen_0
         self.state = np.array([
             self.v_wind,
             self.omega,
             0.0,                # omega_dot
-            T_aero/1e3,         # T_aero
-            50.0,              # T_gen
+            T_aero/1e3,
+            T_gen/1e3,
         ])
+
+        if self.record:
+            self._recordings['t'] = [self.t]
+            self._recordings['v_wind'] = [self.v_wind]
+            self._recordings['omega'] = [self.omega]
+            self._recordings['omega_dot'] = [0.0]
+            self._recordings['T_aero'] = [T_aero]
+            self._recordings['T_gen'] = [T_gen]
+            self._recordings['action'] = [0.0]
+            self._recordings['clipped_action'] = [0.0]
+            self._recordings['rewards'] = []
 
         return self.state
 
     def step(self, a: np.ndarray):
-        _, last_omega, omega_dot, _last_T_aero, _T_gen = self.state
-        T_gen = (_T_gen + a[0])*1e3
+        _, last_omega, _, last_T_aero, last_T_gen = self.state
+        # add some saturation :3
+        u = np.clip(a[0], self.action_space.low, self.action_space.high)
+        # action is T_gen_dot in kN.m
+        T_gen = last_T_gen*1e3 + u[0]*1e3
 
         # going to do the aerodynamic calculations first
         P_aero = self.rotor.get_aerodynamic_power(self.v_wind, self.omega)
@@ -132,14 +180,14 @@ class WindTurbineAnalytical(gym.Env):
         # now integrate to have the new omega
         # for now just use simple euler integration
         self.omega += omega_dot * self.dt
-        # self.omega = self.omega if self.omega > 5e-5 else 5e-5
 
-        last_P_aero = _last_T_aero*1e3 / last_omega
+        last_P_aero = last_T_aero*1e3 / last_omega
         rewards = np.array([
             1.0/1e5 * (P_aero - last_P_aero),
-            - 0.01 * np.square(a).sum(),
-            0.05
+            - 0.1 * np.square(a).sum(),
+            0.05,
         ])
+        # print(rewards)
 
         self.state = np.array([
             self.v_wind,
@@ -148,7 +196,23 @@ class WindTurbineAnalytical(gym.Env):
             T_aero/1e3,
             T_gen/1e3,
         ])
+        self.t += self.dt
 
-        done = not self.observation_space.contains(self.state) and self.omega < 5e-5
+        done = not self.observation_space.contains(self.state)
+
+        if self.record:
+            # we could export more variables like C_p
+            self._recordings['t'].append(self.t)
+            self._recordings['v_wind'].append(self.v_wind)
+            self._recordings['omega'].append(self.omega)
+            self._recordings['omega_dot'].append(omega_dot)
+            self._recordings['T_aero'].append(T_aero)
+            self._recordings['T_gen'].append(T_gen)
+            self._recordings['action'].append(a[0])
+            self._recordings['clipped_action'].append(u[0])
+            self._recordings['rewards'].append(rewards)
 
         return self.state, rewards.sum(), done, {}
+
+    def get_recordings(self):
+        return self._recordings, self.dt

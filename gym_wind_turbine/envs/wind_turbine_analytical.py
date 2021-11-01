@@ -181,7 +181,7 @@ class WindTurbineAnalytical(gym.Env):
         # for now just use simple euler integration
         self.omega += omega_dot * self.dt
 
-        last_P_aero = last_T_aero*1e3 / last_omega
+        last_P_aero = last_T_aero*1e3 * last_omega
         rewards = np.array([
             1.0/1e5 * (P_aero - last_P_aero),
             - 0.1 * np.square(a).sum(),

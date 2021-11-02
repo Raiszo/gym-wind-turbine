@@ -47,7 +47,7 @@ class Rotor:
         v_wind [m/s]
         w_rotor [rad/s]
         """
-        tsr = self.R * w_rotor / v_wind
+        tsr = self.R * np.where(w_rotor > 1e-3, w_rotor, 1e-3) / v_wind
         m_inv = 1/(tsr + 0.08*self.beta) - 0.035/(self.beta**3 + 1)
         C_p = 0.22 * (116*m_inv - 0.4*self.beta - 5) * np.exp(-12.5*m_inv)
         P = 0.5 * self.rho * np.pi * self.R**2 * C_p * v_wind**3
@@ -96,7 +96,7 @@ class WindTurbineAnalytical(gym.Env):
 
         obs_space = np.array([
             [0, 30.0],
-            [5e-5, np.finfo(np.float64).max],
+            [1e-3, np.finfo(np.float64).max],
             [np.finfo(np.float64).min, np.finfo(np.float64).max],
             [0, np.finfo(np.float64).max],
             [0, np.finfo(np.float64).max],
@@ -146,8 +146,7 @@ class WindTurbineAnalytical(gym.Env):
         self.omega = self.omega_0
         self.t = 0.0
 
-        P_aero = self.rotor.get_aerodynamic_power(self.v_wind, self.omega)
-        # print('p_aero:', P_aero)
+        P_aero, C_p, tsr = self.rotor.get_aerodynamic_power(self.v_wind, self.omega)
         T_aero = P_aero / self.omega
         T_gen = self.T_gen_0
         self.state = np.array([
@@ -178,20 +177,23 @@ class WindTurbineAnalytical(gym.Env):
         # add some saturation :3
         u = np.clip(a[0], self.action_space.low, self.action_space.high)
         # action is T_gen_dot in kN.m
+        # print(a)
         T_gen = last_T_gen*1e3 + u[0]*1e3
 
-        # going to do the aerodynamic calculations first
-        P_aero = self.rotor.get_aerodynamic_power(self.v_wind, self.omega)
-        T_aero = P_aero / self.omega
-        omega_dot = self.drive_train.get_rotor_angular_acc(T_aero, T_gen)
-
-        # now integrate to have the new omega
+        # get new omega
+        last_P_aero = last_T_aero*1e3 * last_omega
+        omega_dot = self.drive_train.get_rotor_angular_acc(last_T_aero*1e3, T_gen)
+        # now integrate to update omega
         # for now just use simple euler integration
         self.omega += omega_dot * self.dt
 
-        last_P_aero = last_T_aero*1e3 * last_omega
+        # since there is a new omega that could be less than 0, please implement a short circuit if so
+        P_aero, C_p, tsr = self.rotor.get_aerodynamic_power(self.v_wind, self.omega)
+        T_aero = P_aero / self.omega
+
+        # print(P_aero, last_P_aero, P_aero-last_P_aero)
         rewards = np.array([
-            1.0/1e5 * (P_aero - last_P_aero),
+            1.0/1e3 * (P_aero - last_P_aero),
             - 0.1 * np.square(a).sum(),
             0.05,
         ])

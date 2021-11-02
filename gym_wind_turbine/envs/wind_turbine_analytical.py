@@ -1,4 +1,4 @@
-from typing import TypedDict, List, Optional
+from typing import Tuple, TypedDict, List, Optional
 from dataclasses import dataclass
 import functools
 import gym
@@ -39,7 +39,7 @@ class Rotor:
     beta: float
     """blade pitch angle"""
 
-    def get_aerodynamic_power(self, v_wind: float, w_rotor: float):
+    def get_aerodynamic_power(self, v_wind: float, w_rotor: float) -> Tuple[float, float, float]:
         """
         Make sure w_rotor is not < 0, else C_p may overflow
 
@@ -50,8 +50,9 @@ class Rotor:
         tsr = self.R * w_rotor / v_wind
         m_inv = 1/(tsr + 0.08*self.beta) - 0.035/(self.beta**3 + 1)
         C_p = 0.22 * (116*m_inv - 0.4*self.beta - 5) * np.exp(-12.5*m_inv)
+        P = 0.5 * self.rho * np.pi * self.R**2 * C_p * v_wind**3
 
-        return 0.5 * self.rho * np.pi * self.R**2 * C_p * v_wind**3
+        return P, C_p, tsr
 
 
 class RecordedVariables(TypedDict):
@@ -66,6 +67,9 @@ class RecordedVariables(TypedDict):
     action: List[float]
     clipped_action: List[float]
     rewards: List[np.ndarray]
+
+    C_p: List[float]
+    tsr: List[float]
 
 
 # class EnvProps(TypedDict):
@@ -123,6 +127,8 @@ class WindTurbineAnalytical(gym.Env):
             'action': [],
             'clipped_action': [],
             'rewards': [],
+            'C_p': [],
+            'tsr': []
         }
 
         self.T_gen_0 = T_gen_0
@@ -159,9 +165,11 @@ class WindTurbineAnalytical(gym.Env):
             self._recordings['omega_dot'] = [0.0]
             self._recordings['T_aero'] = [T_aero]
             self._recordings['T_gen'] = [T_gen]
-            self._recordings['action'] = [0.0]
-            self._recordings['clipped_action'] = [0.0]
+            self._recordings['action'] = []
+            self._recordings['clipped_action'] = []
             self._recordings['rewards'] = []
+            self._recordings['C_p'] = [C_p]
+            self._recordings['tsr'] = [tsr]
 
         return self.state
 
@@ -211,6 +219,8 @@ class WindTurbineAnalytical(gym.Env):
             self._recordings['action'].append(a[0])
             self._recordings['clipped_action'].append(u[0])
             self._recordings['rewards'].append(rewards)
+            self._recordings['C_p'].append(C_p)
+            self._recordings['tsr'].append(tsr)
 
         return self.state, rewards.sum(), done, {}
 

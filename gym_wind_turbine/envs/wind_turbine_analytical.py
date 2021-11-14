@@ -55,6 +55,9 @@ class Rotor:
         return P, C_p, tsr
 
 
+
+
+
 class RecordedVariables(TypedDict):
     """System variables """
     t: List[float]
@@ -79,19 +82,14 @@ class RecordedVariables(TypedDict):
 class WindTurbineAnalytical(gym.Env):
     dt = 0.05
 
-    def __init__(self, record=False,
+    def __init__(self, rotor: Rotor, drive_train: DriveTrain,
+                 record=False,
                  omega_0: float=1.0, T_gen_0: float=1000.0) -> None:
         super().__init__()
         self.record: bool = record
 
-        self.rotor = Rotor(rho=1.25, R=38.5, beta=0)
-        self.drive_train = DriveTrain(
-            n_gear= 105.494,
-            I_rotor= 4456761.0,
-            I_gen= 123.0,
-            K_rotor= 45.52,
-            K_gen= 0.4,
-        )
+        self.rotor = rotor
+        self.drive_train = drive_train
         self.v_wind = 11.0      # [m/s]
 
         obs_space = np.array([

@@ -1,4 +1,4 @@
-from gym_wind_turbine.envs.wind_turbine_analytical import DriveTrain, Rotor
+from gym_wind_turbine.envs.wind_turbine_analytical import ConstantWind, DriveTrain, RandomConstantWind, Rotor
 from gym.envs.registration import register
 
 windey_rotor = Rotor(rho=1.25, R=38.5, beta=0)
@@ -10,6 +10,9 @@ windey_drivetrain = DriveTrain(
     K_gen= 0.4,
 )
 
+const_wind = ConstantWind(11.0)
+random_const_wind = RandomConstantWind()
+
 # initial conditions are set
 # constant wind constant wind speed
 register(
@@ -19,6 +22,7 @@ register(
     kwargs={
         'rotor': windey_rotor,
         'drive_train': windey_drivetrain,
+        'wind_generator': const_wind,
     }
 )
 
@@ -31,5 +35,6 @@ register(
     kwargs={
         'rotor': windey_rotor,
         'drive_train': windey_drivetrain,
+        'wind_generator': random_const_wind,
     }
 )

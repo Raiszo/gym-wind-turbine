@@ -1,9 +1,38 @@
-from typing import Tuple, TypedDict, List, Optional
+from typing import Tuple, TypedDict, List, Optional, Protocol
 from dataclasses import dataclass
 import functools
 import gym
 from gym import spaces
 import numpy as np
+
+class WindGenerator(Protocol):
+    def read(self) -> float:
+        """returns wind in m/s"""
+        ...
+    def reset(self) -> float: ...
+
+@dataclass
+class ConstantWind:
+    value: float
+    def read(self):
+        return self.value
+    def reset(self):
+        return self.value
+
+class RandomConstantWind:
+    """constant wind velocity that changes everytime it is reseted"""
+    def __init__(self) -> None:
+        self.value = self._reset()
+
+    def _reset(self) -> float:
+        return np.random.uniform(low=8.0, high=12.0, size=(1,))[0]
+
+    def read(self):
+        return self.value
+
+    def reset(self):
+        self.value = self._reset()
+        return self.value
 
 @dataclass
 class DriveTrain:
@@ -54,10 +83,6 @@ class Rotor:
 
         return P, C_p, tsr
 
-
-
-
-
 class RecordedVariables(TypedDict):
     """System variables """
     t: List[float]
@@ -75,22 +100,18 @@ class RecordedVariables(TypedDict):
     tsr: List[float]
 
 
-# class EnvProps(TypedDict):
-#     training: Optional[bool]
-
-
 class WindTurbineAnalytical(gym.Env):
     dt = 0.05
 
     def __init__(self, rotor: Rotor, drive_train: DriveTrain,
-                 record=False,
+                 wind_generator: WindGenerator, record=False,
                  omega_0: float=1.0, T_gen_0: float=1000.0) -> None:
         super().__init__()
         self.record: bool = record
 
         self.rotor = rotor
         self.drive_train = drive_train
-        self.v_wind = 11.0      # [m/s]
+        self.wind_generator = wind_generator
 
         obs_space = np.array([
             [0, 30.0],
@@ -143,12 +164,13 @@ class WindTurbineAnalytical(gym.Env):
         """
         self.omega = self.omega_0
         self.t = 0.0
+        v_wind = self.wind_generator.reset()
 
-        P_aero, C_p, tsr = self.rotor.get_aerodynamic_power(self.v_wind, self.omega)
+        P_aero, C_p, tsr = self.rotor.get_aerodynamic_power(v_wind, self.omega)
         T_aero = P_aero / self.omega
         T_gen = self.T_gen_0
         self.state = np.array([
-            self.v_wind,
+            v_wind,
             self.omega,
             0.0,                # omega_dot
             T_aero/1e3,
@@ -157,7 +179,7 @@ class WindTurbineAnalytical(gym.Env):
 
         if self.record:
             self._recordings['t'] = [self.t]
-            self._recordings['v_wind'] = [self.v_wind]
+            self._recordings['v_wind'] = [v_wind]
             self._recordings['omega'] = [self.omega]
             self._recordings['omega_dot'] = [0.0]
             self._recordings['T_aero'] = [T_aero]
@@ -172,6 +194,7 @@ class WindTurbineAnalytical(gym.Env):
 
     def step(self, a: np.ndarray):
         _, last_omega, _, last_T_aero, last_T_gen = self.state
+        v_wind = self.wind_generator.read()
         # add some saturation :3
         u = np.clip(a[0], self.action_space.low, self.action_space.high)
         # action is T_gen_dot in kN.m
@@ -186,7 +209,7 @@ class WindTurbineAnalytical(gym.Env):
         self.omega += omega_dot * self.dt
 
         # since there is a new omega that could be less than 0, please implement a short circuit if so
-        P_aero, C_p, tsr = self.rotor.get_aerodynamic_power(self.v_wind, self.omega)
+        P_aero, C_p, tsr = self.rotor.get_aerodynamic_power(v_wind, self.omega)
         T_aero = P_aero / self.omega
 
         # print(P_aero, last_P_aero, P_aero-last_P_aero)
@@ -198,7 +221,7 @@ class WindTurbineAnalytical(gym.Env):
         # print(rewards)
 
         self.state = np.array([
-            self.v_wind,
+            v_wind,
             self.omega,
             omega_dot,
             T_aero/1e3,
@@ -211,7 +234,7 @@ class WindTurbineAnalytical(gym.Env):
         if self.record:
             # we could export more variables like C_p
             self._recordings['t'].append(self.t)
-            self._recordings['v_wind'].append(self.v_wind)
+            self._recordings['v_wind'].append(v_wind)
             self._recordings['omega'].append(self.omega)
             self._recordings['omega_dot'].append(omega_dot)
             self._recordings['T_aero'].append(T_aero)

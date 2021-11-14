@@ -5,6 +5,8 @@ from functools import lru_cache
 
 rotor = Rotor(rho=1.25, R=38.5, beta=0)
 
+# TODO: maybe computing a 3d grid of tsr, v_wind and Power could be used as a lookup table
+# would be a lot faster if the experiment uses random wind speed
 @lru_cache
 def mpp(v_wind: float) -> float:
     tsr = np.arange(0.01, 14, 0.01)

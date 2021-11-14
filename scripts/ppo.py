@@ -13,8 +13,8 @@ def main():
     # base dir is experiments/trials
     run_ppo_experiment(
         environment='WindTurbine-rcw-v0',
-        n_iterations=600, iteration_size=8192,
-        n_epochs=10, minibatch_size=128,
+        n_iterations=800, iteration_size=8192,
+        n_epochs=10, minibatch_size=256,
         gamma=0.99,
         actor_lr=3e-4,
         critic_lr=5e-3,

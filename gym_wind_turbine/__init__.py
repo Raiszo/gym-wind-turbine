@@ -1,4 +1,4 @@
-from gym_wind_turbine.envs.wind_turbine_analytical import ConstantWind, DriveTrain, RandomConstantWind, Rotor
+from gym_wind_turbine.envs.wind_turbine_analytical import ConstantWind, DriveTrain, RandomConstantWind, RandomStepsWind, Rotor
 from gym.envs.registration import register
 
 windey_rotor = Rotor(rho=1.25, R=38.5, beta=0)
@@ -50,5 +50,17 @@ register(
         'rotor': windey_rotor,
         'drive_train': windey_drivetrain,
         'wind_generator': random_const_wind,
+    }
+)
+
+# wind velocity changes every 100 seconds as step signals
+register(
+    id='WindTurbine-rsw-v0',
+    entry_point='gym_wind_turbine.envs:WindTurbineAnalytical',
+    max_episode_steps=int(240.0/0.05),
+    kwargs={
+        'rotor': windey_rotor,
+        'drive_train': windey_drivetrain,
+        'wind_generator': RandomStepsWind(duration=50, dt=0.05),
     }
 )

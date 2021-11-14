@@ -1,4 +1,4 @@
-from typing import Tuple, TypedDict, List, Protocol
+from typing import Tuple, TypedDict, List, Protocol, Union
 from dataclasses import dataclass
 import functools
 import gym
@@ -32,6 +32,28 @@ class RandomConstantWind:
 
     def reset(self):
         self.value = self._reset()
+        return self.value
+
+class RandomStepsWind:
+    """random value step signals every 100 seconds"""
+    def __init__(self, duration: float, dt: float) -> None:
+        self.duration = duration
+        self.dt = dt
+        self._reset()
+
+    def _reset(self):
+        self.i = 0
+        self.value: float = np.random.uniform(low=8.0, high=12.0, size=(1,))[0]
+
+    def read(self):
+        self.i += 1
+        if self.i*self.dt >= self.duration:
+            self._reset()
+
+        return self.value
+
+    def reset(self):
+        self._reset()
         return self.value
 
 @dataclass
@@ -68,7 +90,12 @@ class Rotor:
     beta: float
     """blade pitch angle"""
 
-    def get_aerodynamic_power(self, v_wind: float, w_rotor: float) -> Tuple[float, float, float]:
+    def compute_cp(self, tsr: Union[float, np.ndarray]):
+        m_inv = 1/(tsr + 0.08*self.beta) - 0.035/(self.beta**3 + 1)
+        C_p = 0.22 * (116*m_inv - 0.4*self.beta - 5) * np.exp(-12.5*m_inv)
+        return C_p
+
+    def get_aerodynamics(self, v_wind: float, w_rotor: float) -> Tuple[float, float, float]:
         """
         Make sure w_rotor is not < 0, else C_p may overflow
 
@@ -77,8 +104,7 @@ class Rotor:
         w_rotor [rad/s]
         """
         tsr = self.R * np.where(w_rotor > 1e-3, w_rotor, 1e-3) / v_wind
-        m_inv = 1/(tsr + 0.08*self.beta) - 0.035/(self.beta**3 + 1)
-        C_p = 0.22 * (116*m_inv - 0.4*self.beta - 5) * np.exp(-12.5*m_inv)
+        C_p = self.compute_cp(tsr)
         P = 0.5 * self.rho * np.pi * self.R**2 * C_p * v_wind**3
 
         return P, C_p, tsr
@@ -166,7 +192,7 @@ class WindTurbineAnalytical(gym.Env):
         self.t = 0.0
         v_wind = self.wind_generator.reset()
 
-        P_aero, C_p, tsr = self.rotor.get_aerodynamic_power(v_wind, self.omega)
+        P_aero, C_p, tsr = self.rotor.get_aerodynamics(v_wind, self.omega)
         T_aero = P_aero / self.omega
         T_gen = self.T_gen_0
         self.state = np.array([
@@ -209,7 +235,7 @@ class WindTurbineAnalytical(gym.Env):
         self.omega += omega_dot * self.dt
 
         # since there is a new omega that could be less than 0, please implement a short circuit if so
-        P_aero, C_p, tsr = self.rotor.get_aerodynamic_power(v_wind, self.omega)
+        P_aero, C_p, tsr = self.rotor.get_aerodynamics(v_wind, self.omega)
         T_aero = P_aero / self.omega
 
         # print(P_aero, last_P_aero, P_aero-last_P_aero)

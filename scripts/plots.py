@@ -1,6 +1,18 @@
-from gym_wind_turbine.envs.wind_turbine_analytical import RecordedVariables, WindTurbineAnalytical
+from gym_wind_turbine.envs.wind_turbine_analytical import RecordedVariables, Rotor, WindTurbineAnalytical
 import numpy as np
 import matplotlib.pyplot as plt
+from functools import lru_cache
+
+rotor = Rotor(rho=1.25, R=38.5, beta=0)
+
+@lru_cache
+def mpp(v_wind: float) -> float:
+    tsr = np.arange(0.01, 14, 0.01)
+
+    C_p = rotor.compute_cp(tsr)
+    P = 0.5 * rotor.rho * np.pi * rotor.R**2 * C_p * v_wind**3
+
+    return np.amax(P)
 
 
 def make_plots(rec: RecordedVariables, dt: float):
@@ -24,23 +36,31 @@ def make_plots(rec: RecordedVariables, dt: float):
     plt.ylabel('Torque [kN.m]')
     plt.grid()
 
+    #
+    mpp_vec = np.vectorize(mpp)
+    plt.figure(2)
+    plt.plot(t, T_aero*w_r*1e-3, 'b', label='$P_{aero}$')
+    plt.plot(t, mpp_vec(v_wind)*1e-3, 'r', label='$P_{max}$')
+    plt.legend()
+    plt.xlabel('t [s]')
+    plt.grid()
+
+
     plot_vars = [
         (v_wind, 'wind velocity [m/s]'),
-        (T_aero*w_r*1e-3, 'Power [kW]'),
         (w_r, 'omega rad/s'),
         (C_p, 'C_p'),
         (tsr, 'tsr')
     ]
 
-    fig, ax = plt.subplots(5,1, sharex=True)
-
+    _, ax = plt.subplots(4,1, sharex=True)
     for [a,v,label] in zip(ax, *zip(*plot_vars)):
         a.plot(t, v)
         a.set_ylabel(label)
         a.grid()
     ax[-1].set_xlabel('t [s]')
 
-    plt.figure(3)
+    plt.figure(4)
     plt.plot(t[:-1], action/dt, label='raw')
     plt.plot(t[:-1], clipped_action/dt, label='clipped')
     plt.legend()
@@ -60,5 +80,5 @@ def make_plots(rec: RecordedVariables, dt: float):
     plt.legend()
     plt.xlabel('t [s]')
     plt.grid()
-    
+
     plt.show()

@@ -26,5 +26,6 @@ def run_no_action(env: gym.Wrapper, max_steps: int) -> float:
 
 if __name__ == '__main__':
     # env = get_env('WindTurbine-analytical-v0', record=True, omega_0=0.9, T_gen_0=500.0)
-    env = get_env('WindTurbine-analytical-v0', record=True)
+    # env = get_env('WindTurbine-analytical-v0', record=True)
+    env = get_env('WindTurbine-rcw-v0', record=True)
     run_no_action(env, 240*20)

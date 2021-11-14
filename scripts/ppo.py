@@ -12,7 +12,7 @@ def main():
     ####
     # base dir is experiments/trials
     run_ppo_experiment(
-        environment='WindTurbine-analytical-v0',
+        environment='WindTurbine-rcw-v0',
         n_iterations=600, iteration_size=8192,
         n_epochs=10, minibatch_size=128,
         gamma=0.99,

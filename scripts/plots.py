@@ -5,9 +5,10 @@ import matplotlib.pyplot as plt
 
 def make_plots(rec: RecordedVariables, dt: float):
     t = np.array(rec['t'])
+    v_wind = np.array(rec['v_wind'])
     T_aero = np.array(rec['T_aero'])
     T_gen = np.array(rec['T_gen'])
-    omega = np.array(rec['omega'])
+    w_r = np.array(rec['w_r'])
     action = np.array(rec['action'])
     clipped_action = np.array(rec['clipped_action'])
     rewards = np.stack(rec['rewards'], axis=1)
@@ -23,19 +24,21 @@ def make_plots(rec: RecordedVariables, dt: float):
     plt.ylabel('Torque [kN.m]')
     plt.grid()
 
-    fig, ax = plt.subplots(3,1, sharex=True)
-    ax[0].plot(t, T_aero*omega*1e-3)
-    ax[0].set_ylabel('Power [kW]')
-    ax[0].grid()
+    plot_vars = [
+        (v_wind, 'wind velocity [m/s]'),
+        (T_aero*w_r*1e-3, 'Power [kW]'),
+        (w_r, 'omega rad/s'),
+        (C_p, 'C_p'),
+        (tsr, 'tsr')
+    ]
 
-    ax[1].plot(t, C_p)
-    ax[1].set_ylabel('C_p')
-    ax[1].grid()
+    fig, ax = plt.subplots(5,1, sharex=True)
 
-    ax[2].plot(t, tsr)
-    ax[2].grid()
-    ax[2].set_ylabel('tsr')
-    ax[2].set_xlabel('t [s]')
+    for [a,v,label] in zip(ax, *zip(*plot_vars)):
+        a.plot(t, v)
+        a.set_ylabel(label)
+        a.grid()
+    ax[-1].set_xlabel('t [s]')
 
     plt.figure(3)
     plt.plot(t[:-1], action/dt, label='raw')
@@ -43,12 +46,6 @@ def make_plots(rec: RecordedVariables, dt: float):
     plt.legend()
     plt.xlabel('t [s]')
     plt.ylabel('T_gen_dot [kN.m/s]')
-    plt.grid()
-
-    plt.figure(4)
-    plt.plot(t, omega)
-    plt.xlabel('t [s]')
-    plt.ylabel('omega rad/s')
     plt.grid()
 
     # remember that the tuple for training was state, action, reward

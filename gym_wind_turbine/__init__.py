@@ -26,12 +26,26 @@ register(
     }
 )
 
+# just 60 seconds
+# cw stands for constant wind
+register(
+    id='WindTurbine-cw-v0',
+    entry_point='gym_wind_turbine.envs:WindTurbineAnalytical',
+    max_episode_steps=int(90.0/0.05),
+    kwargs={
+        'rotor': windey_rotor,
+        'drive_train': windey_drivetrain,
+        'wind_generator': const_wind,
+    }
+)
+
 # initial conditions are set
 # wind speed is initialized randomly
+# rcw stands for random constant wind
 register(
-    id='WindTurbine-random-v0',
+    id='WindTurbine-rcw-v0',
     entry_point='gym_wind_turbine.envs:WindTurbineAnalytical',
-    max_episode_steps=int(60.0/0.05),
+    max_episode_steps=int(90.0/0.05),
     kwargs={
         'rotor': windey_rotor,
         'drive_train': windey_drivetrain,

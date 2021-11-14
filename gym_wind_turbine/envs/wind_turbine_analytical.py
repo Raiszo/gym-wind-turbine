@@ -1,4 +1,4 @@
-from typing import Tuple, TypedDict, List, Optional, Protocol
+from typing import Tuple, TypedDict, List, Protocol
 from dataclasses import dataclass
 import functools
 import gym
@@ -88,8 +88,8 @@ class RecordedVariables(TypedDict):
     t: List[float]
 
     v_wind: List[float]
-    omega: List[float]
-    omega_dot: List[float]
+    w_r: List[float]
+    w_r_dot: List[float]
     T_aero: List[float]
     T_gen: List[float]
     action: List[float]
@@ -139,8 +139,8 @@ class WindTurbineAnalytical(gym.Env):
         self._recordings: RecordedVariables = {
             't': [],
             'v_wind': [],
-            'omega': [],
-            'omega_dot': [],
+            'w_r': [],
+            'w_r_dot': [],
             'T_aero': [],
             'T_gen': [],
             'action': [],
@@ -180,8 +180,8 @@ class WindTurbineAnalytical(gym.Env):
         if self.record:
             self._recordings['t'] = [self.t]
             self._recordings['v_wind'] = [v_wind]
-            self._recordings['omega'] = [self.omega]
-            self._recordings['omega_dot'] = [0.0]
+            self._recordings['w_r'] = [self.omega]
+            self._recordings['w_r_dot'] = [0.0]
             self._recordings['T_aero'] = [T_aero]
             self._recordings['T_gen'] = [T_gen]
             self._recordings['action'] = []
@@ -235,8 +235,8 @@ class WindTurbineAnalytical(gym.Env):
             # we could export more variables like C_p
             self._recordings['t'].append(self.t)
             self._recordings['v_wind'].append(v_wind)
-            self._recordings['omega'].append(self.omega)
-            self._recordings['omega_dot'].append(omega_dot)
+            self._recordings['w_r'].append(self.omega)
+            self._recordings['w_r_dot'].append(omega_dot)
             self._recordings['T_aero'].append(T_aero)
             self._recordings['T_gen'].append(T_gen)
             self._recordings['action'].append(a[0])

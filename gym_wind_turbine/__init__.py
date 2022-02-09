@@ -1,4 +1,5 @@
-from gym_wind_turbine.envs.wind_turbine_analytical import ConstantWind, DriveTrain, RandomConstantWind, RandomStepsWind, Rotor
+from gym_wind_turbine.envs.wind_generators import ConstantWind, DatasetConstantWind, DatasetWind, RandomConstantWind, RandomStepsWind
+from gym_wind_turbine.envs.wind_turbine_analytical import DriveTrain, Rotor
 from gym.envs.registration import register
 
 windey_rotor = Rotor(rho=1.25, R=38.5, beta=0)
@@ -12,6 +13,7 @@ windey_drivetrain = DriveTrain(
 
 const_wind = ConstantWind(11.0)
 random_const_wind = RandomConstantWind()
+dataset_const_wind = DatasetConstantWind()
 
 # initial conditions are set
 # constant wind constant wind speed
@@ -53,7 +55,31 @@ register(
     }
 )
 
-# wind velocity changes every 100 seconds as step signals
+# Dataset Constant Wind, a value of wind speed is chosen from a dataset
+register(
+    id='WindTurbine-dcw-v0',
+    entry_point='gym_wind_turbine.envs:WindTurbineAnalytical',
+    max_episode_steps=int(90.0/0.05),
+    kwargs={
+        'rotor': windey_rotor,
+        'drive_train': windey_drivetrain,
+        'wind_generator': dataset_const_wind,
+    }
+)
+
+# Dataset wind that changes every 10 minutes
+register(
+    id='WindTurbine-dsw-v0',
+    entry_point='gym_wind_turbine.envs:WindTurbineAnalytical',
+    max_episode_steps=int(22 * 60.0/0.05),
+    kwargs={
+        'rotor': windey_rotor,
+        'drive_train': windey_drivetrain,
+        'wind_generator': DatasetWind(duration=600, dt=0.05),
+    }
+)
+
+# wind velocity changes every 50 seconds as step signals
 register(
     id='WindTurbine-rsw-v0',
     entry_point='gym_wind_turbine.envs:WindTurbineAnalytical',

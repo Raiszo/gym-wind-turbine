@@ -1,60 +1,12 @@
-from typing import Tuple, TypedDict, List, Protocol, Union
+from typing import Tuple, TypedDict, List, Union
 from dataclasses import dataclass
 import functools
 import gym
 from gym import spaces
 import numpy as np
 
-class WindGenerator(Protocol):
-    def read(self) -> float:
-        """returns wind in m/s"""
-        ...
-    def reset(self) -> float: ...
+from gym_wind_turbine.envs.wind_generators import WindGenerator
 
-@dataclass
-class ConstantWind:
-    value: float
-    def read(self):
-        return self.value
-    def reset(self):
-        return self.value
-
-class RandomConstantWind:
-    """constant wind velocity that changes everytime it is reseted"""
-    def __init__(self) -> None:
-        self.value = self._reset()
-
-    def _reset(self) -> float:
-        return np.random.uniform(low=8.0, high=12.0, size=(1,))[0]
-
-    def read(self):
-        return self.value
-
-    def reset(self):
-        self.value = self._reset()
-        return self.value
-
-class RandomStepsWind:
-    """random value step signals every 100 seconds"""
-    def __init__(self, duration: float, dt: float) -> None:
-        self.duration = duration
-        self.dt = dt
-        self._reset()
-
-    def _reset(self):
-        self.i = 0
-        self.value: float = np.random.uniform(low=8.0, high=12.0, size=(1,))[0]
-
-    def read(self):
-        self.i += 1
-        if self.i*self.dt >= self.duration:
-            self._reset()
-
-        return self.value
-
-    def reset(self):
-        self._reset()
-        return self.value
 
 @dataclass
 class DriveTrain:

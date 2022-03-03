@@ -1,6 +1,9 @@
 experiments
 old-experiments
 
+#Macos files
+.DS_Store
+
 # emacs files
 *~
 \#*\#

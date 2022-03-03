@@ -5,6 +5,7 @@ import gym_wind_turbine
 from gym_wind_turbine.envs.wind_turbine_analytical import WindTurbineAnalytical
 from rl_agents.ppo import GaussianSample, get_env
 from scripts.plots import make_plots
+from tqdm import tqdm
 
 
 def run_episode(env: gym.Wrapper, actor: tf.keras.Model, max_steps: int) -> float:
@@ -13,7 +14,7 @@ def run_episode(env: gym.Wrapper, actor: tf.keras.Model, max_steps: int) -> floa
     # screen = env.render(mode='rgb_array')
     reward_sum = 0.0
 
-    for i in range(1, max_steps + 1):
+    for _ in tqdm(range(1, max_steps + 1)):
         state = tf.expand_dims(state, 0)
         action_na = actor(state).mean()
 

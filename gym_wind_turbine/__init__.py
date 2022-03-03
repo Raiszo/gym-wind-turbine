@@ -67,15 +67,15 @@ register(
     }
 )
 
-# Dataset wind that changes every 10 minutes
+# Dataset wind that changes every 30 seconds
 register(
     id='WindTurbine-dsw-v0',
     entry_point='gym_wind_turbine.envs:WindTurbineAnalytical',
-    max_episode_steps=int(22 * 60.0/0.05),
+    max_episode_steps=int(30 * 30.0/0.05),
     kwargs={
         'rotor': windey_rotor,
         'drive_train': windey_drivetrain,
-        'wind_generator': DatasetWind(duration=600, dt=0.05),
+        'wind_generator': DatasetWind(duration=30, dt=0.05),
     }
 )
 

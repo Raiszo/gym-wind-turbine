@@ -1,27 +1,41 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import cm
 from gym_wind_turbine.envs.wind_turbine_analytical import Rotor
 
 
 def main():
-    v_wind = 11.0
+    v_wind = np.arange(8.0, 12.0, 0.01)
     tsr = np.arange(0.01, 14, 0.01)
-    m_inv = 1/tsr - 0.035
-    c_p = 0.22 * (116*m_inv - 5) * np.exp(-12.5*m_inv)
 
     rotor = Rotor(rho=1.25, R=38.5, beta=0)
 
-    # c_p_max = c_p.max()
-    tsr_max = tsr[np.argmax(c_p)]
-    w_r_max = tsr_max * v_wind / rotor.R
+    # make meshgrid, x=C_p & y=v_wind
+    x_tsr, y_vw = np.meshgrid(tsr, v_wind)
+    C_p = rotor.compute_cp(x_tsr)
+    P = 0.5 * rotor.rho * np.pi * rotor.R**2 * C_p * y_vw**3
 
-    P_aero_max = rotor.get_aerodynamic_power(v_wind, w_r_max)
-    print('P_aero_max', P_aero_max)
-
-    plt.plot(tsr, c_p)
-    plt.grid()
+    fig = plt.figure()
+    ax = fig.add_subplot(projection='3d')
+    ax.plot_surface(x_tsr, y_vw, P, cmap=cm.coolwarm,
+                    linewidth=0, antialiased=False)
+    ax.set_xlabel('tsr')
+    ax.set_ylabel('$v_wind$')
+    ax.set_zlabel('P')
 
     plt.show()
+
+    # # c_p_max = c_p.max()
+    # idx = np.argmax(C_p)
+    # tsr_max = tsr[idx]
+    # P_max = P[idx]
+    # # w_r_max = tsr_max * v_wind / rotor.R
+
+    # print('P max:', P_max)
+
+    # plt.plot(tsr, C_p)
+
+    # plt.show()
 
 if __name__ == '__main__':
     main()

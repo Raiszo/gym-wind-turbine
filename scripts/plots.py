@@ -30,72 +30,49 @@ def make_plots(rec: RecordedVariables, dt: float):
     C_p = np.array(rec['C_p'])
     tsr = np.array(rec['tsr'])
 
-    ###########
-    # Torque comparison T_a // n_g T_g
-    ###########
-    plt.figure(1, figsize=[4, 4.8])
-    plt.plot(t, T_aero*1e-3, 'b', label='$T_r$')
-    plt.plot(t, T_gen*1e-3*105.494, 'r--', label='$n_g T_g$')
-    plt.ylabel('Torque [kN.m]')
-    plt.xlabel('t [s]')
-    plt.legend()
-    plt.tight_layout()
 
     ###########
+    # multi plot: v_w, w_r, P, T
+    ###########
+    fg, ((ax0, ax1), (ax2, ax3)) = plt.subplots(2,2, sharex=True, figsize=[8, 4.8])
+    # wind
+    ax0.plot(t, v_wind)
+    ax0.set_ylabel('$v_w$ [m/s]')
+
     # POWER vs ideal power
-    ###########
     mpp_vec = np.vectorize(mpp)
-    plt.figure(2, figsize=[4, 4.8])
-    plt.plot(t, T_aero*w_r*1e-3, 'b', label='$P_r$')
-    plt.plot(t, mpp_vec(v_wind)*1e-3, 'r--', label='$P_r^*$')
-    plt.ylabel('Power [kW]')
-    plt.xlabel('t [s]')
-    plt.legend()
-    plt.tight_layout()
+    ax1.plot(t, T_aero*w_r*1e-3, 'b', label='$P_r$')
+    ax1.plot(t, mpp_vec(v_wind)*1e-3, 'r--', label='$P_r^*$')
+    ax1.set_ylabel('Power [kW]')
+    ax1.set_xlabel('t [s]')
+    ax1.legend()
+
+    # w_r
+    ax2.plot(t, w_r)
+    ax2.set_ylabel('$w_r$ rad/s')
+
+    # Torque comparison T_a // n_g T_g
+    ax3.plot(t, T_aero*1e-3, 'b', label='$T_r$')
+    ax3.plot(t, T_gen*1e-3*105.494, 'r--', label='$T_g$')
+    ax3.set_ylabel('Torque [kN.m]')
+    ax3.set_xlabel('t [s]')
+    ax3.legend()
 
 
-    ###########
-    # multi plot: v_w, w_r
-    ###########
-    plot_vars = [
-        (v_wind, '$v_w$ [m/s]'),
-        (w_r, '$w_r$ rad/s'),
-        # (C_p, 'C_p'),
-        # (tsr, 'tsr')
-    ]
-
-    fg, ax = plt.subplots(2,1, sharex=True, figsize=[4, 4.8])
-    for [a,v,label] in zip(ax, *zip(*plot_vars)):
-        a.plot(t, v)
-        a.set_ylabel(label)
-        # a.grid()
-    ax[-1].set_xlabel('t [s]')
-    fg.tight_layout()
-
-    ###########
-    # multi plot: v_w, tsr
-    ###########
-    fg, ax = plt.subplots(2,1, sharex=True, figsize=[4, 4.8])
-    ax[0].plot(t, v_wind)
-    ax[0].set_ylabel('$v_w$ [m/s]')
-
-    ax[1].plot(t, tsr)
-    ax[1].set_ylabel('tsr')
-    ax[1].set_ylim([3, 9.5])
-
-    ax[-1].set_xlabel('t [s]')
     fg.tight_layout()
 
     ###########
     # Action
     ###########
-    # plt.figure(4)
-    # plt.plot(t[:-1], action/dt, label='raw')
-    # plt.plot(t[:-1], clipped_action/dt, label='clipped')
-    # plt.legend()
-    # plt.xlabel('t [s]')
-    # plt.ylabel('$\\dot T_g$ [kN.m/s]')
-    # plt.grid()
+    plt.figure(2)
+    plt.plot(t[:-1], (action/dt)*105.494, label='raw')
+    plt.plot(t[:-1], (clipped_action/dt)*105.494, label='clipped')
+    plt.legend()
+    plt.xlabel('t [s]')
+    plt.ylabel('$\dot{T_g}$ [kN.m/s]')
+    plt.grid()
+    plt.tight_layout()
+
 
     ###########
     # REWARD

@@ -30,55 +30,49 @@ def make_plots(rec: RecordedVariables, dt: float):
     C_p = np.array(rec['C_p'])
     tsr = np.array(rec['tsr'])
 
-    ###########
-    # POWER
-    ###########
-    plt.figure(1)
-    plt.plot(t, T_aero*1e-3, 'b', label='$T_a$')
-    plt.plot(t, T_gen*1e-3*105.494, 'r--', label='$n_g T_g$')
-    plt.ylabel('Torque [kN.m]')
-    plt.xlabel('t [s]')
-    plt.legend()
 
     ###########
-    # Torque comparison T_a // n_g T_g
+    # multi plot: v_w, w_r, P, T
     ###########
+    fg, ((ax0, ax1), (ax2, ax3)) = plt.subplots(2,2, sharex=True, figsize=[8, 4.8])
+    # wind
+    ax0.plot(t, v_wind)
+    ax0.set_ylabel('$v_w$ [m/s]')
+
+    # POWER vs ideal power
     mpp_vec = np.vectorize(mpp)
-    plt.figure(2)
-    plt.plot(t, T_aero*w_r*1e-3, 'b', label='$P_a$')
-    plt.plot(t, mpp_vec(v_wind)*1e-3, 'r--', label='$MPP$')
-    plt.ylabel('Power [kW]')
-    plt.xlabel('t [s]')
-    plt.legend()
+    ax1.plot(t, T_aero*w_r*1e-3, 'b', label='$P_r$')
+    ax1.plot(t, mpp_vec(v_wind)*1e-3, 'r--', label='$P_r^*$')
+    ax1.set_ylabel('Power [kW]')
+    ax1.set_xlabel('t [s]')
+    ax1.legend()
+
+    # w_r
+    ax2.plot(t, w_r)
+    ax2.set_ylabel('$w_r$ rad/s')
+
+    # Torque comparison T_a // n_g T_g
+    ax3.plot(t, T_aero*1e-3, 'b', label='$T_r$')
+    ax3.plot(t, T_gen*1e-3*105.494, 'r--', label='$T_g$')
+    ax3.set_ylabel('Torque [kN.m]')
+    ax3.set_xlabel('t [s]')
+    ax3.legend()
 
 
-    ###########
-    # multi plot: w_v, w_r, C_p, tsr
-    ###########
-    plot_vars = [
-        (v_wind, 'wind velocity [m/s]'),
-        (w_r, 'omega rad/s'),
-        (C_p, 'C_p'),
-        (tsr, 'tsr')
-    ]
-
-    _, ax = plt.subplots(4,1, sharex=True)
-    for [a,v,label] in zip(ax, *zip(*plot_vars)):
-        a.plot(t, v)
-        a.set_ylabel(label)
-        a.grid()
-    ax[-1].set_xlabel('t [s]')
+    fg.tight_layout()
 
     ###########
     # Action
     ###########
-    plt.figure(4)
-    plt.plot(t[:-1], action/dt, label='raw')
-    plt.plot(t[:-1], clipped_action/dt, label='clipped')
+    plt.figure(2)
+    plt.plot(t[:-1], (action/dt)*105.494, label='raw')
+    plt.plot(t[:-1], (clipped_action/dt)*105.494, label='clipped')
     plt.legend()
     plt.xlabel('t [s]')
-    plt.ylabel('$\\dot T_g$ [kN.m/s]')
+    plt.ylabel('$\dot{T_g}$ [kN.m/s]')
     plt.grid()
+    plt.tight_layout()
+
 
     ###########
     # REWARD
@@ -88,13 +82,23 @@ def make_plots(rec: RecordedVariables, dt: float):
     # and gave it reward r1
     # so it is natural for the reward vector to have 1 element less than
     # state and action
-    plt.figure(5)
+    # plt.figure(5)
     # plt.plot(t[:-1], rewards[0], label='power reward')
     # plt.plot(t[:-1], rewards[1], label='control reward')
     # plt.plot(t[:-1], rewards[2], label='alive bonus')
-    plt.plot(t[:-1], np.sum(rewards, axis=1), 'b')
-    plt.xlabel('t [s]')
-    plt.ylabel('Reward')
-    plt.grid()
+    # plt.plot(t[:-1], np.sum(rewards, axis=1), 'b')
+    # plt.xlabel('t [s]')
+    # plt.ylabel('Reward')
+    # plt.grid()
 
     plt.show()
+
+# potencia de rotor -> mecanica -> aerodynamic
+# torque/par electromagnetico, no mencionar potencia
+# - explicar el tema de iteracion
+# - MPP -> P_a^ideal
+# - graficas
+# ----- par mecanico y electromagnetico tomando n_g
+# ----- omega
+# ----- v_wind
+# ----- potencia de rotor y rotor ideal

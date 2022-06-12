@@ -4,6 +4,7 @@ import functools
 import gym
 from gym import spaces
 import numpy as np
+from decimal import Decimal as D
 
 from gym_wind_turbine.envs.wind_generators import WindGenerator
 
@@ -80,6 +81,7 @@ class RecordedVariables(TypedDict):
 
 class WindTurbineAnalytical(gym.Env):
     dt = 0.05
+    D_dt = D(dt)
 
     def __init__(self, rotor: Rotor, drive_train: DriveTrain,
                  wind_generator: WindGenerator, record=False,
@@ -141,7 +143,7 @@ class WindTurbineAnalytical(gym.Env):
         - generator torque ~ 250 kN.m
         """
         self.omega = self.omega_0
-        self.t = 0.0
+        self.t = D(0)
         v_wind = self.wind_generator.reset()
 
         P_aero, C_p, tsr = self.rotor.get_aerodynamics(v_wind, self.omega)
@@ -156,7 +158,7 @@ class WindTurbineAnalytical(gym.Env):
         ])
 
         if self.record:
-            self._recordings['t'] = [self.t]
+            self._recordings['t'] = [float(self.t)]
             self._recordings['v_wind'] = [v_wind]
             self._recordings['w_r'] = [self.omega]
             self._recordings['w_r_dot'] = [0.0]
@@ -205,13 +207,13 @@ class WindTurbineAnalytical(gym.Env):
             T_aero/1e3,
             T_gen/1e3,
         ])
-        self.t += self.dt
+        self.t += self.D_dt
 
         done = not self.observation_space.contains(self.state)
 
         if self.record:
             # we could export more variables like C_p
-            self._recordings['t'].append(self.t)
+            self._recordings['t'].append(float(self.t))
             self._recordings['v_wind'].append(v_wind)
             self._recordings['w_r'].append(self.omega)
             self._recordings['w_r_dot'].append(omega_dot)
